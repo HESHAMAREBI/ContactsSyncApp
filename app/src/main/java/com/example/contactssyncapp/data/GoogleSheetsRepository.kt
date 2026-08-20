@@ -70,20 +70,19 @@ class GoogleSheetsRepository(private val context: Context) {
                 }
 
                 try {
-                    // Col 0 (A): External ID (e.g. "c-1")
-                    val rawId = row.getOrNull(0)?.toString()?.trim()
-                    val contactId = if (!rawId.isNullOrEmpty()) rawId else "c-${index + 1}"
+                    // Col 0 (A): Employee Name (e.g. "عبدالسلام علام")
+                    val name = row.getOrNull(0)?.toString()?.trim().orEmpty()
 
-                    // Col 1 (B): Name (e.g. "أمال أبوبكر ودان")
-                    val name = row.getOrNull(1)?.toString()?.trim().orEmpty()
+                    // Col 1 (B): Department / Administration / Branch (e.g. "إدارة شؤون الموظفين")
+                    val department = row.getOrNull(1)?.toString()?.trim().orEmpty()
 
-                    // Col 2 (C): Administration / Department / Branch (e.g. "الموظفين")
-                    val department = row.getOrNull(2)?.toString()?.trim().orEmpty()
+                    // Col 2 (C): Job Title (e.g. "مدير إدارة" / "موظف")
+                    val jobTitle = row.getOrNull(2)?.toString()?.trim().orEmpty()
 
-                    // Col 3 (D): Phone Number (e.g. "091-264-0367")
+                    // Col 3 (D): Phone Number (e.g. "0912640019")
                     val phone = row.getOrNull(3)?.toString()?.trim().orEmpty()
 
-                    // Col 4 (E): Notes / Extra
+                    // Col 4 (E): Notes / Branch / Extra
                     val notes = row.getOrNull(4)?.toString()?.trim().orEmpty()
 
                     // Skip row only if both name and phone are completely blank
@@ -92,13 +91,21 @@ class GoogleSheetsRepository(private val context: Context) {
                         return@mapIndexedNotNull null
                     }
 
+                    val combinedNotes = when {
+                        jobTitle.isNotEmpty() && notes.isNotEmpty() && jobTitle != notes -> "$jobTitle - $notes"
+                        jobTitle.isNotEmpty() -> jobTitle
+                        else -> notes
+                    }
+
                     Contact(
-                        contactId = contactId,
+                        contactId = "c-${index + 1}",
                         name = name,
                         phone = phone,
                         email = if (notes.contains("@")) notes else "",
                         address = department,
-                        notes = notes
+                        notes = combinedNotes,
+                        department = department,
+                        jobTitle = jobTitle
                     )
                 } catch (e: Exception) {
                     Log.e(TAG, "Error parsing row $index: $row", e)

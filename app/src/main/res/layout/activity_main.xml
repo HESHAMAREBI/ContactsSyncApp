@@ -1,122 +1,235 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#124067"
+    android:background="@color/mainBackground"
+    android:fillViewport="true"
     tools:context=".MainActivity">
 
-    <!-- Help Button Top-End -->
-    <ImageButton
-        android:id="@+id/helpButton"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:layout_alignParentTop="true"
-        android:layout_alignParentEnd="true"
-        android:layout_marginTop="16dp"
-        android:layout_marginEnd="16dp"
-        android:background="?attr/selectableItemBackgroundBorderless"
-        android:contentDescription="تعليمات"
-        android:padding="10dp"
-        android:src="@drawable/ic_help"
-        app:tint="@color/white" />
-
-    <!-- App Logo -->
-    <ImageView
-        android:id="@+id/logoImageView"
-        android:layout_width="140dp"
-        android:layout_height="140dp"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="40dp"
-        android:contentDescription="شعار التطبيق"
-        android:src="@drawable/sheaar_png_jum" />
-
-    <!-- Status & Progress Container -->
-    <LinearLayout
-        android:id="@+id/statusContainer"
+    <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_below="@id/logoImageView"
-        android:layout_centerHorizontal="true"
-        android:layout_marginStart="24dp"
-        android:layout_marginTop="24dp"
-        android:layout_marginEnd="24dp"
-        android:gravity="center"
-        android:orientation="vertical">
+        android:padding="20dp">
 
-        <!-- Circular Progress Indicator -->
-        <ProgressBar
-            android:id="@+id/syncProgressBar"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:layout_marginBottom="12dp"
-            android:indeterminate="true"
-            android:indeterminateTint="@color/white"
-            android:visibility="gone"
-            tools:visibility="visible" />
+        <!-- Top Bar / Help Button -->
+        <ImageButton
+            android:id="@+id/helpButton"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="تعليمات ومساعدة"
+            android:src="@drawable/ic_help"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:tint="@color/white" />
 
-        <!-- Primary Status (Last Sync Timestamp / Running State) -->
+        <!-- Brand Logo -->
+        <ImageView
+            android:id="@+id/logoImageView"
+            android:layout_width="120dp"
+            android:layout_height="120dp"
+            android:layout_marginTop="16dp"
+            android:contentDescription="شعار مصرف الجمهورية"
+            android:src="@drawable/sheaar_png_jum"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/helpButton" />
+
+        <!-- App Brand Title -->
         <TextView
-            android:id="@+id/statusText"
+            android:id="@+id/appTitleText"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:gravity="center"
-            android:textColor="@color/white"
-            android:textSize="18sp"
-            android:textStyle="bold"
-            tools:text="آخر مزامنة: لم تتم بعد" />
-
-        <!-- Detailed Diff Summary -->
-        <TextView
-            android:id="@+id/diffDetailsText"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:gravity="center"
-            android:textColor="#E0E0E0"
-            android:textSize="15sp"
-            android:visibility="gone"
-            tools:text="تمت المزامنة: +5 جديد، ~2 معدل، -0 محذوف"
-            tools:visibility="visible" />
-
-    </LinearLayout>
-
-    <!-- Bottom Actions Container -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true"
-        android:layout_marginBottom="32dp"
-        android:gravity="center"
-        android:orientation="vertical"
-        android:paddingStart="24dp"
-        android:paddingEnd="24dp">
-
-        <!-- Manual Sync Action Button -->
-        <Button
-            android:id="@+id/manualSyncButton"
-            android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:backgroundTint="@color/mainButton"
-            android:elevation="4dp"
-            android:text="مزامنة جهات الاتصال الآن"
-            android:textColor="@color/white"
-            android:textSize="16sp"
-            android:textStyle="bold" />
-
-        <!-- Delete App Contacts Button -->
-        <Button
-            android:id="@+id/deleteButton"
-            android:layout_width="match_parent"
-            android:layout_height="52dp"
             android:layout_marginTop="12dp"
-            android:backgroundTint="@color/deleteButton"
-            android:elevation="2dp"
-            android:text="حذف جهات الاتصال المؤسسية"
+            android:text="مصرف الجمهورية"
             android:textColor="@color/white"
-            android:textSize="15sp" />
+            android:textSize="20sp"
+            android:textStyle="bold"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/logoImageView" />
 
-    </LinearLayout>
+        <!-- Translucent Glassmorphism Status Card -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/syncStatusCard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            app:cardBackgroundColor="@color/translucentCardBg"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="0dp"
+            app:layout_constraintTop_toBottomOf="@id/appTitleText"
+            app:strokeColor="@color/translucentCardStroke"
+            app:strokeWidth="1dp">
 
-</RelativeLayout>
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <ProgressBar
+                    android:id="@+id/syncProgressBar"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:layout_marginBottom="8dp"
+                    android:indeterminate="true"
+                    android:indeterminateTint="@color/white"
+                    android:visibility="gone"
+                    tools:visibility="visible" />
+
+                <TextView
+                    android:id="@+id/lastSyncTextView"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:text="آخر مزامنة: لم تتم بعد"
+                    android:textColor="@color/white"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/detailedStatsTextView"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:gravity="center"
+                    android:textColor="#CBD5E1"
+                    android:textSize="12sp"
+                    android:visibility="gone"
+                    tools:text="+5 جديد، ~2 معدل، 480 دون تغيير"
+                    tools:visibility="visible" />
+
+            </LinearLayout>
+
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Center Hero Directory Card -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/directoryCard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:foreground="?attr/selectableItemBackground"
+            app:cardBackgroundColor="@color/cardBackground"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="6dp"
+            app:layout_constraintTop_toBottomOf="@id/syncStatusCard"
+            app:strokeColor="@color/divider"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="20dp">
+
+                <!-- Hero Directory Icon -->
+                <ImageView
+                    android:id="@+id/directoryIcon"
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"
+                    android:background="@drawable/bg_hero_icon"
+                    android:contentDescription="دليل جهات الاتصال"
+                    android:padding="12dp"
+                    android:src="@drawable/ic_directory"
+                    app:tint="@color/white" />
+
+                <!-- Text Details -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"
+                    android:layout_marginEnd="12dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="دليل جهات اتصال المصرف"
+                        android:textColor="@color/primaryText"
+                        android:textSize="17sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="بحث واستعراض فوري لجميع الإدارات والفروع"
+                        android:textColor="@color/secondaryText"
+                        android:textSize="12sp" />
+
+                </LinearLayout>
+
+                <!-- Navigation Arrow Icon -->
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:contentDescription="فتح الدليل"
+                    android:src="@drawable/ic_chevron_forward"
+                    app:tint="@color/secondaryText" />
+
+            </LinearLayout>
+
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Bottom Actions Container -->
+        <LinearLayout
+            android:id="@+id/actionsContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="28dp"
+            android:layout_marginBottom="16dp"
+            android:orientation="vertical"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/directoryCard"
+            app:layout_constraintVertical_bias="1.0">
+
+            <!-- Primary Sync Action Button -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/syncButton"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:backgroundTint="@color/mainButton"
+                android:text="مزامنة جهات الاتصال الآن"
+                android:textColor="@color/white"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                app:cornerRadius="16dp"
+                app:elevation="4dp"
+                app:icon="@drawable/ic_sync"
+                app:iconGravity="textStart"
+                app:iconSize="20dp"
+                app:iconTint="@color/white" />
+
+            <!-- Secondary Delete Corporate Contacts Button -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/deleteButton"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:layout_marginTop="12dp"
+                android:text="حذف جهات الاتصال المؤسسية"
+                android:textColor="@color/deleteRed"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                app:cornerRadius="16dp"
+                app:icon="@drawable/ic_delete"
+                app:iconGravity="textStart"
+                app:iconSize="18dp"
+                app:iconTint="@color/deleteRed"
+                app:strokeColor="@color/deleteButtonStroke"
+                app:strokeWidth="1dp" />
+
+        </LinearLayout>
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+</ScrollView>

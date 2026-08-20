@@ -84,6 +84,119 @@ class ContactsSyncRepository(private val context: Context) {
         }
     }
 
+    data class ContactBuilder(
+        var rawContactId: Long = 0L,
+        var syncId: String = "",
+        var name: String = "",
+        var phoneNumber: String = "",
+        var department: String = "",
+        var jobTitle: String = "",
+        var note: String = ""
+    )
+
+    /**
+     * Retrieves all stored enterprise contacts from the device phonebook
+     * strictly isolated by ACCOUNT_TYPE = "com.jumhoria.contacts".
+     */
+    fun getStoredEnterpriseContacts(): List<Contact> {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
+            Log.e(TAG, "Cannot get stored enterprise contacts: Missing READ_CONTACTS permission.")
+            return emptyList()
+        }
+
+        val resolver = context.contentResolver
+        val contactMap = mutableMapOf<Long, ContactBuilder>()
+
+        val uri = ContactsContract.Data.CONTENT_URI
+        val projection = arrayOf(
+            ContactsContract.Data.RAW_CONTACT_ID,
+            ContactsContract.Data.MIMETYPE,
+            ContactsContract.Data.DATA1,
+            ContactsContract.Data.DATA2,
+            ContactsContract.Data.DATA3,
+            ContactsContract.Data.DATA4,
+            ContactsContract.Data.DATA5,
+            ContactsContract.RawContacts.ACCOUNT_TYPE
+        )
+        val selection = "${ContactsContract.RawContacts.ACCOUNT_TYPE} = ? AND ${ContactsContract.RawContacts.DELETED} = 0"
+        val selectionArgs = arrayOf(ACCOUNT_TYPE)
+
+        try {
+            resolver.query(uri, projection, selection, selectionArgs, null)?.use { cursor ->
+                val rawIdIdx = cursor.getColumnIndex(ContactsContract.Data.RAW_CONTACT_ID)
+                val mimeIdx = cursor.getColumnIndex(ContactsContract.Data.MIMETYPE)
+                val data1Idx = cursor.getColumnIndex(ContactsContract.Data.DATA1)
+                val data4Idx = cursor.getColumnIndex(ContactsContract.Data.DATA4)
+                val data5Idx = cursor.getColumnIndex(ContactsContract.Data.DATA5)
+
+                while (cursor.moveToNext()) {
+                    val rawId = cursor.getLong(rawIdIdx)
+                    val mime = cursor.getString(mimeIdx).orEmpty()
+                    val data1 = cursor.getString(data1Idx)?.trim().orEmpty()
+                    val data4 = cursor.getString(data4Idx)?.trim().orEmpty()
+                    val data5 = cursor.getString(data5Idx)?.trim().orEmpty()
+
+                    val builder = contactMap.getOrPut(rawId) {
+                        ContactBuilder(rawContactId = rawId, syncId = rawId.toString())
+                    }
+
+                    when (mime) {
+                        ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE -> {
+                            if (data1.isNotBlank()) builder.name = data1
+                        }
+                        ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE -> {
+                            val clean = PhoneUtils.extractCleanPhone(data1)
+                            if (clean.isNotBlank() && builder.phoneNumber.isBlank()) {
+                                builder.phoneNumber = clean
+                            } else if (builder.phoneNumber.isBlank()) {
+                                builder.phoneNumber = data1
+                            }
+                        }
+                        ContactsContract.CommonDataKinds.Organization.CONTENT_ITEM_TYPE -> {
+                            if (data1.isNotBlank() && data1 != "Jumhouria Contacts" && builder.department.isBlank()) {
+                                builder.department = data1
+                            }
+                            if (data5.isNotBlank() && builder.department.isBlank()) {
+                                builder.department = data5
+                            }
+                            if (data4.isNotBlank()) {
+                                builder.jobTitle = data4
+                            }
+                        }
+                        ContactsContract.CommonDataKinds.Note.CONTENT_ITEM_TYPE -> {
+                            if (data1.isNotBlank()) builder.note = data1
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed querying stored enterprise contacts", e)
+        }
+
+        return contactMap.values
+            .mapNotNull { builder ->
+                val name = builder.name.trim()
+                if (name.isBlank()) {
+                    null
+                } else {
+                    val effectiveDept = if (builder.department.isNotBlank()) builder.department else builder.jobTitle
+                    val effectiveTitle = if (builder.jobTitle.isNotBlank() && builder.jobTitle != builder.department) builder.jobTitle else ""
+
+                    Contact(
+                        contactId = builder.syncId,
+                        name = name,
+                        phone = builder.phoneNumber.trim(),
+                        email = "",
+                        address = effectiveDept,
+                        notes = builder.note,
+                        department = effectiveDept,
+                        jobTitle = effectiveTitle
+                    )
+                }
+            }
+            .sortedBy { it.name.lowercase() }
+    }
+
     /**
      * Backward-compatible sync entry point returning the number of active synced contacts.
      */

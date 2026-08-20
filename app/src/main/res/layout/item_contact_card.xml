@@ -1,0 +1,205 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginStart="16dp"
+    android:layout_marginTop="8dp"
+    android:layout_marginEnd="16dp"
+    android:layout_marginBottom="8dp"
+    app:cardBackgroundColor="@color/cardBackground"
+    app:cardCornerRadius="18dp"
+    app:cardElevation="3dp"
+    app:strokeColor="@color/divider"
+    app:strokeWidth="1dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <!-- Top Header: Avatar & Name -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <!-- Avatar Initial Circle -->
+            <TextView
+                android:id="@+id/tvAvatarInitial"
+                android:layout_width="52dp"
+                android:layout_height="52dp"
+                android:background="@drawable/bg_avatar_circle"
+                android:gravity="center"
+                android:textColor="@color/avatarText"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                tools:text="ع" />
+
+            <!-- Name and Organization Column -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="14dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <!-- Full Employee Name -->
+                <TextView
+                    android:id="@+id/tvContactName"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxLines="2"
+                    android:textColor="@color/primaryText"
+                    android:textSize="17sp"
+                    android:textStyle="bold"
+                    tools:text="عبدالسلام علام" />
+
+                <!-- Job Title / Subtitle -->
+                <TextView
+                    android:id="@+id/tvJobTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="3dp"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textColor="@color/secondaryText"
+                    android:textSize="13sp"
+                    android:visibility="gone"
+                    tools:text="مدير إدارة شؤون الموظفين مكلف"
+                    tools:visibility="visible" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <!-- Department / Administration Tag -->
+        <LinearLayout
+            android:id="@+id/departmentContainer"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_badge"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="10dp"
+            android:paddingTop="5dp"
+            android:paddingEnd="10dp"
+            android:paddingBottom="5dp">
+
+            <ImageView
+                android:layout_width="14dp"
+                android:layout_height="14dp"
+                android:contentDescription="الإدارة / الفرع"
+                android:src="@drawable/ic_business"
+                app:tint="@color/badgeText" />
+
+            <TextView
+                android:id="@+id/tvDepartment"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="@color/badgeText"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                tools:text="إدارة شؤون الموظفين" />
+
+        </LinearLayout>
+
+        <!-- Phone Number Highlight Row -->
+        <LinearLayout
+            android:id="@+id/phoneRowContainer"
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_badge"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp">
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:contentDescription="رقم الهاتف"
+                android:src="@drawable/ic_call"
+                app:tint="@color/callButtonText" />
+
+            <TextView
+                android:id="@+id/tvPhoneNumber"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:layout_weight="1"
+                android:textColor="@color/primaryText"
+                android:textDirection="ltr"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                tools:text="091-2640019" />
+
+        </LinearLayout>
+
+        <!-- Divider -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="14dp"
+            android:layout_marginBottom="12dp"
+            android:background="@color/divider" />
+
+        <!-- Actions: Call & Copy Buttons -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <!-- Dial Button -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnCall"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="0dp"
+                android:layout_height="44dp"
+                android:layout_marginEnd="6dp"
+                android:layout_weight="1"
+                android:backgroundTint="@color/callButtonBg"
+                android:text="اتصال"
+                android:textColor="@color/callButtonText"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                app:cornerRadius="12dp"
+                app:icon="@drawable/ic_call"
+                app:iconGravity="textStart"
+                app:iconSize="18dp"
+                app:iconTint="@color/callButtonText" />
+
+            <!-- Copy Button -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnCopy"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="0dp"
+                android:layout_height="44dp"
+                android:layout_marginStart="6dp"
+                android:layout_weight="1"
+                android:backgroundTint="@color/copyButtonBg"
+                android:text="نسخ الرقم"
+                android:textColor="@color/copyButtonText"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                app:cornerRadius="12dp"
+                app:icon="@drawable/ic_copy"
+                app:iconGravity="textStart"
+                app:iconSize="18dp"
+                app:iconTint="@color/copyButtonText" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</com.google.android.material.card.MaterialCardView>
