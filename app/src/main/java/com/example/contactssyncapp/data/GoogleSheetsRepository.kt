@@ -1,89 +1,133 @@
 package com.example.contactssyncapp.data
 
 import android.content.Context
+import android.util.Log
+import com.example.contactssyncapp.R
 import com.google.api.client.http.javanet.NetHttpTransport
 import com.google.api.client.json.gson.GsonFactory
 import com.google.api.services.sheets.v4.Sheets
 import com.google.api.services.sheets.v4.SheetsScopes
-import com.example.contactssyncapp.R
 import com.google.auth.http.HttpCredentialsAdapter
 import com.google.auth.oauth2.GoogleCredentials
 import java.io.InputStream
 
-@Suppress("UNCHECKED_CAST")
 class GoogleSheetsRepository(private val context: Context) {
 
-    fun getContacts(): List<Contact> {
-        try {
-            android.util.Log.d("SheetsDebug", "جلب البيانات من Google Sheets...")
+    companion object {
+        private const val TAG = "GoogleSheetsRepo"
+        private const val APPLICATION_NAME = "ContactsSyncApp"
+    }
+
+    fun getContacts(
+        spreadsheetId: String = AppConfigManager.getSpreadsheetId(context),
+        range: String = AppConfigManager.getSheetRange(context)
+    ): List<Contact> {
+        return try {
+            Log.d(TAG, "Initializing Google Sheets service and loading credentials...")
             val credential = getCredentials()
             val transport = NetHttpTransport()
             val jsonFactory = GsonFactory.getDefaultInstance()
             val sheets = Sheets.Builder(transport, jsonFactory, HttpCredentialsAdapter(credential))
-                .setApplicationName("ContactsSyncApp")
+                .setApplicationName(APPLICATION_NAME)
                 .build()
 
-            val spreadsheetId = "1OaoYcShJJbCEmECf-_HX3Kwc5REqec2W_mPGU4H6r-I"
-            val range = "Sheet1!A2:F"
+            var rawRows: List<List<Any?>>? = null
+            val candidateRanges = listOf(range, "'Sheet1'!A2:E", "'contacts'!A2:E", "Sheet1!A2:E", "contacts!A2:E", "A2:E")
 
-            val result = sheets.spreadsheets().values()
-                .get(spreadsheetId, range)
-                .execute()
+            for (candidateRange in candidateRanges.distinct()) {
+                try {
+                    Log.d(TAG, "Attempting fetch with range: $candidateRange")
+                    val response = sheets.spreadsheets().values()
+                        .get(spreadsheetId, candidateRange)
+                        .execute()
 
-            val values = result.values // This will be List<Any?>
+                    val values = response.getValues()
+                    if (!values.isNullOrEmpty()) {
+                        @Suppress("UNCHECKED_CAST")
+                        rawRows = values as List<List<Any?>>
+                        Log.i(TAG, "Successfully retrieved ${rawRows.size} raw rows using range '$candidateRange'")
+                        break
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "Range '$candidateRange' failed: ${e.message}")
+                }
+            }
 
-            if (values.isNullOrEmpty()) {
-                android.util.Log.w("SheetsDebug", "No data found in sheet.")
+            if (rawRows.isNullOrEmpty()) {
+                Log.w(TAG, "No data found across all candidate ranges for Spreadsheet ID: $spreadsheetId")
+                Log.i(TAG, "Successfully fetched 0 contacts")
                 return emptyList()
             }
 
-            android.util.Log.d("SheetsDebug", "Original data from sheet: $values")
-            android.util.Log.d("SheetsDebug", "Type of result.values: ${values.javaClass.name}")
-            values.firstOrNull()?.let {
-                android.util.Log.d("SheetsDebug", "Type of first element in values: ${it.javaClass.name}")
-            }
-
-            val contacts = values.flatMap { it as? List<*> ?: emptyList() }
-                .mapNotNull { rowObject ->
-                    // rows from Sheets may contain null cells, so treat elements as nullable Any?
-                    val rowList = rowObject as? List<Any?>
-
-                    if (rowList.isNullOrEmpty() || rowList.all { it?.toString()?.isBlank() == true }) {
-                        android.util.Log.d("SheetsDebug", "Skipping empty or blank row: $rowList")
-                        return@mapNotNull null
-                    }
-
-                    try {
-                        val contactId = rowList.getOrNull(0)?.toString()?.takeIf { it.isNotBlank() }
-                            ?: java.util.UUID.randomUUID().toString()
-
-                        android.util.Log.d("SheetsDebug", "Generated contactId: $contactId for row: $rowList")
-
-                        Contact(
-                            contactId = contactId,
-                            name = rowList.getOrNull(1)?.toString() ?: "",
-                            phone = rowList.getOrNull(4)?.toString() ?: "",
-                            email = "", // No email column in the sheet
-                            address = rowList.getOrNull(2)?.toString() ?: "",
-                            notes = rowList.getOrNull(3)?.toString() ?: ""
-                        )
-                    } catch (e: Exception) {
-                        android.util.Log.e("SheetsDebug", "Failed to parse row: $rowList", e)
-                        null
-                    }
+            val contacts = rawRows.mapIndexedNotNull { index, rowObject ->
+                val row = rowObject as? List<*> ?: run {
+                    Log.w(TAG, "Row at index $index is not a List: $rowObject")
+                    return@mapIndexedNotNull null
                 }
 
-            android.util.Log.d("SheetsDebug", "عدد جهات الاتصال التي تم تحويلها: ${contacts.size}")
-            return contacts
+                if (row.isEmpty() || row.all { it == null || it.toString().isBlank() }) {
+                    return@mapIndexedNotNull null
+                }
+
+                try {
+                    // Col 0 (A): External ID (e.g. "c-1")
+                    val rawId = row.getOrNull(0)?.toString()?.trim()
+                    val contactId = if (!rawId.isNullOrEmpty()) rawId else "c-${index + 1}"
+
+                    // Col 1 (B): Name (e.g. "أمال أبوبكر ودان")
+                    val name = row.getOrNull(1)?.toString()?.trim().orEmpty()
+
+                    // Col 2 (C): Administration / Department / Branch (e.g. "الموظفين")
+                    val department = row.getOrNull(2)?.toString()?.trim().orEmpty()
+
+                    // Col 3 (D): Phone Number (e.g. "091-264-0367")
+                    val phone = row.getOrNull(3)?.toString()?.trim().orEmpty()
+
+                    // Col 4 (E): Notes / Extra
+                    val notes = row.getOrNull(4)?.toString()?.trim().orEmpty()
+
+                    // Skip row only if both name and phone are completely blank
+                    if (name.isBlank() && phone.isBlank()) {
+                        Log.d(TAG, "Row $index skipped because both name and phone are blank.")
+                        return@mapIndexedNotNull null
+                    }
+
+                    Contact(
+                        contactId = contactId,
+                        name = name,
+                        phone = phone,
+                        email = if (notes.contains("@")) notes else "",
+                        address = department,
+                        notes = notes
+                    )
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error parsing row $index: $row", e)
+                    null
+                }
+            }
+
+            Log.i(TAG, "Successfully fetched ${contacts.size} contacts from Google Sheets")
+            Log.d(TAG, "Live fetched ${contacts.size} rows from Sheet")
+            if (contacts.isNotEmpty()) {
+                Log.d(TAG, "Sample fetched contacts: ${contacts.take(3).map { "${it.name} (${it.phone})" }}")
+            }
+            contacts
         } catch (e: Exception) {
-            android.util.Log.e("SheetsDebug", "Error fetching contacts from Google Sheets", e)
-            return emptyList()
+            Log.e(TAG, "Failed to fetch contacts from Google Sheets", e)
+            emptyList()
         }
     }
 
     private fun getCredentials(): GoogleCredentials {
-        val inputStream: InputStream = context.resources.openRawResource(R.raw.credentials)
-        return GoogleCredentials.fromStream(inputStream)
-            .createScoped(listOf(SheetsScopes.SPREADSHEETS_READONLY))
+        return try {
+            val inputStream: InputStream = context.resources.openRawResource(R.raw.credentials)
+            val credentials = GoogleCredentials.fromStream(inputStream)
+                .createScoped(listOf(SheetsScopes.SPREADSHEETS_READONLY))
+            Log.d(TAG, "Successfully loaded Google credentials from res/raw/credentials.json")
+            credentials
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to load credentials from res/raw/credentials.json", e)
+            throw e
+        }
     }
 }

@@ -7,65 +7,115 @@
     android:background="#124067"
     tools:context=".MainActivity">
 
+    <!-- Help Button Top-End -->
     <ImageButton
         android:id="@+id/helpButton"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
         android:layout_alignParentTop="true"
         android:layout_alignParentEnd="true"
         android:layout_marginTop="16dp"
         android:layout_marginEnd="16dp"
-        android:background="@android:color/transparent"
+        android:background="?attr/selectableItemBackgroundBorderless"
         android:contentDescription="تعليمات"
-        android:src="@drawable/ic_help" />
+        android:padding="10dp"
+        android:src="@drawable/ic_help"
+        app:tint="@color/white" />
 
+    <!-- App Logo -->
     <ImageView
         android:id="@+id/logoImageView"
-        android:layout_width="150dp"
-        android:layout_height="150dp"
+        android:layout_width="140dp"
+        android:layout_height="140dp"
         android:layout_centerHorizontal="true"
-        android:layout_marginTop="50dp"
+        android:layout_marginTop="40dp"
+        android:contentDescription="شعار التطبيق"
         android:src="@drawable/sheaar_png_jum" />
 
-    <TextView
-        android:id="@+id/statusText"
-        android:layout_width="wrap_content"
+    <!-- Status & Progress Container -->
+    <LinearLayout
+        android:id="@+id/statusContainer"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_below="@id/logoImageView"
         android:layout_centerHorizontal="true"
-        android:layout_marginTop="30dp"
-        android:textColor="@color/white"
-        android:textSize="18sp"
-        tools:text="آخر مزامنة: لم تتم بعد" />
+        android:layout_marginStart="24dp"
+        android:layout_marginTop="24dp"
+        android:layout_marginEnd="24dp"
+        android:gravity="center"
+        android:orientation="vertical">
 
+        <!-- Circular Progress Indicator -->
+        <ProgressBar
+            android:id="@+id/syncProgressBar"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginBottom="12dp"
+            android:indeterminate="true"
+            android:indeterminateTint="@color/white"
+            android:visibility="gone"
+            tools:visibility="visible" />
+
+        <!-- Primary Status (Last Sync Timestamp / Running State) -->
+        <TextView
+            android:id="@+id/statusText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:textColor="@color/white"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            tools:text="آخر مزامنة: لم تتم بعد" />
+
+        <!-- Detailed Diff Summary -->
+        <TextView
+            android:id="@+id/diffDetailsText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center"
+            android:textColor="#E0E0E0"
+            android:textSize="15sp"
+            android:visibility="gone"
+            tools:text="تمت المزامنة: +5 جديد، ~2 معدل، -0 محذوف"
+            tools:visibility="visible" />
+
+    </LinearLayout>
+
+    <!-- Bottom Actions Container -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
+        android:layout_marginBottom="32dp"
+        android:gravity="center"
         android:orientation="vertical"
-        android:padding="20dp">
+        android:paddingStart="24dp"
+        android:paddingEnd="24dp">
 
-
+        <!-- Manual Sync Action Button -->
         <Button
             android:id="@+id/manualSyncButton"
-            android:layout_width="320dp"
-            android:layout_height="wrap_content"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
             android:backgroundTint="@color/mainButton"
-            android:text="مزامنة جهات الاتصال"
+            android:elevation="4dp"
+            android:text="مزامنة جهات الاتصال الآن"
             android:textColor="@color/white"
-            android:layout_gravity="center_horizontal" />
+            android:textSize="16sp"
+            android:textStyle="bold" />
 
-
+        <!-- Delete App Contacts Button -->
         <Button
             android:id="@+id/deleteButton"
-            android:layout_width="320dp"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginTop="12dp"
             android:backgroundTint="@color/deleteButton"
-            android:text="حذف جهات الاتصال المضافة"
+            android:elevation="2dp"
+            android:text="حذف جهات الاتصال المؤسسية"
             android:textColor="@color/white"
-            android:layout_gravity="center_horizontal" />
-
+            android:textSize="15sp" />
 
     </LinearLayout>
 

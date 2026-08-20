@@ -1,20 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
-    id("com.google.devtools.ksp") version "1.9.23-1.0.19"
-}
-
-// Kotlin stdlib version is constrained declaratively in `settings.gradle.kts`.
-// As a practical and reliable interim measure ensure the compiler/classpath used by KSP
-// resolves kotlin-stdlib to the Kotlin version the project compiles with.
-configurations.all {
-    resolutionStrategy {
-        force(
-            "org.jetbrains.kotlin:kotlin-stdlib:1.9.23",
-            "org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.23",
-            "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.23"
-        )
-    }
+    alias(libs.plugins.ksp)
 }
 
 android {
@@ -41,9 +28,6 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
-    lint {
-        checkReleaseBuilds = false
-    }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -58,31 +42,48 @@ android {
         resources {
             excludes += "META-INF/DEPENDENCIES"
             excludes += "META-INF/INDEX.LIST"
+            excludes += "META-INF/LICENSE"
+            excludes += "META-INF/LICENSE.txt"
+            excludes += "META-INF/NOTICE"
+            excludes += "META-INF/NOTICE.txt"
         }
     }
 }
 
-dependencies {
+configurations.all {
+    resolutionStrategy {
+        preferProjectModules()
+        force("com.google.guava:listenablefuture:9999.0-empty-to-avoid-conflict-with-guava")
+    }
+}
 
+dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
     implementation(libs.androidx.activity)
+    implementation(libs.androidx.activity.ktx)
     implementation(libs.androidx.constraintlayout)
 
-    // Google Sign-In
+    // Google Sign-In & Auth
     implementation(libs.google.play.services.auth)
+    implementation(libs.google.auth.library.oauth2.http) {
+        exclude(group = "org.apache.httpcomponents")
+        exclude(group = "com.google.guava", module = "listenablefuture")
+    }
 
     // Google Sheets API
-    // Use centralized version catalog entries for Google APIs
-    implementation(libs.google.api.client.android)
-    implementation(libs.google.apis.sheets)
-    implementation(libs.google.oauth.client.jetty)
+    implementation(libs.google.api.client.android) {
+        exclude(group = "org.apache.httpcomponents")
+        exclude(group = "com.google.guava", module = "listenablefuture")
+    }
+    implementation(libs.google.apis.sheets) {
+        exclude(group = "org.apache.httpcomponents")
+        exclude(group = "com.google.guava", module = "listenablefuture")
+    }
 
     // WorkManager for background tasks
     implementation(libs.androidx.work)
-    // WorkManager for background tasks
-    implementation(libs.google.auth.library.oauth2.http)
 
     // Coroutines
     implementation(libs.kotlinx.coroutines.android)
@@ -90,7 +91,6 @@ dependencies {
     // Lifecycle
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.androidx.lifecycle.livedata.ktx)
-
 
     // Room Database
     implementation(libs.androidx.room.runtime)

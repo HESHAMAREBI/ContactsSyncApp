@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<restrictions xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <restriction
+        android:key="spreadsheet_id"
+        android:restrictionType="string"
+        android:title="@string/restriction_spreadsheet_id_title"
+        android:description="@string/restriction_spreadsheet_id_desc"
+        android:defaultValue="1OaoYcShJJbCEmECf-_HX3Kwc5REqec2W_mPGU4H6r-I" />
+
+    <restriction
+        android:key="sheet_range"
+        android:restrictionType="string"
+        android:title="@string/restriction_sheet_range_title"
+        android:description="@string/restriction_sheet_range_desc"
+        android:defaultValue="\'Sheet1\'!A2:E" />
+
+    <restriction
+        android:key="sync_interval_hours"
+        android:restrictionType="integer"
+        android:title="@string/restriction_sync_interval_title"
+        android:description="@string/restriction_sync_interval_desc"
+        android:defaultValue="24" />
+
+    <restriction
+        android:key="force_account_name"
+        android:restrictionType="string"
+        android:title="@string/restriction_account_name_title"
+        android:description="@string/restriction_account_name_desc"
+        android:defaultValue="مصرف الجمهورية" />
+
+</restrictions>

@@ -16,6 +16,12 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.ContactsSyncApp">
+
+        <!-- Microsoft Intune MDM App Restrictions Schema -->
+        <meta-data
+            android:name="android.content.APP_RESTRICTIONS"
+            android:resource="@xml/app_restrictions" />
+
         <activity
             android:name="com.example.contactssyncapp.MainActivity"
             android:exported="true">
@@ -25,6 +31,16 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Dynamic MDM Configuration Change Receiver -->
+        <receiver
+            android:name="com.example.contactssyncapp.data.AppConfigManager$RestrictionsReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.APPLICATION_RESTRICTIONS_CHANGED" />
+            </intent-filter>
+        </receiver>
+
     </application>
 
 </manifest>

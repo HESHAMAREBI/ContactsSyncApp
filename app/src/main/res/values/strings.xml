@@ -1,3 +1,29 @@
 <resources>
     <string name="app_name">ContactsSyncApp</string>
+    <string name="last_sync_never">آخر مزامنة: لم تتم بعد</string>
+    <string name="status_syncing">جاري مزامنة جهات الاتصال...</string>
+    <string name="last_sync_format">آخر مزامنة: %1$s</string>
+    <string name="diff_summary_format">تمت المزامنة: +%1$d جديد، ~%2$d معدل، %3$d دون تغيير، -%4$d محذوف</string>
+    <string name="diff_summary_format_no_unchanged">تمت المزامنة: +%1$d جديد، ~%2$d معدل، -%3$d محذوف</string>
+    <string name="sync_success_toast">تم تحديث جهات الاتصال بنجاح (%1$d جهة اتصال)</string>
+    <string name="sync_error_toast">فشلت المزامنة: %1$s</string>
+    <string name="status_all_deleted">تم حذف جميع جهات الاتصال المؤسسية</string>
+    <string name="delete_success_toast">تم حذف %1$d جهة اتصال!</string>
+    <string name="permissions_required_toast">أذونات جهات الاتصال والإشعارات مطلوبة لعمل التطبيق</string>
+    <string name="delete_confirm_title">تأكيد الحذف</string>
+    <string name="delete_confirm_message">هل أنت متأكد من حذف جميع جهات الاتصال المؤسسية التي تمت مزامنتها؟</string>
+    <string name="confirm_yes_delete">نعم، حذف</string>
+    <string name="cancel">إلغاء</string>
+    <string name="help_title">تعليمات الاستخدام</string>
+    <string name="help_ok">حسناً</string>
+
+    <!-- MDM Managed Configurations Strings -->
+    <string name="restriction_spreadsheet_id_title">معرف ملف Google Sheet المؤسسي</string>
+    <string name="restriction_spreadsheet_id_desc">المعرف الفريد لجدول البيانات الخاص بجهات الاتصال المؤسسية على Google Drive</string>
+    <string name="restriction_sheet_range_title">نطاق واسم ورقة البيانات</string>
+    <string name="restriction_sheet_range_desc">اسم ورقة البيانات ونطاق الخلايا المطلوب مزامنتها (مثال: \'Sheet1\'!A2:E)</string>
+    <string name="restriction_sync_interval_title">فترة المزامنة الدورية (بالساعات)</string>
+    <string name="restriction_sync_interval_desc">الفاصل الزمني للمزامنة التلقائية في الخلفية بالساعات</string>
+    <string name="restriction_account_name_title">اسم حساب جهات الاتصال</string>
+    <string name="restriction_account_name_desc">الاسم المعروض لحساب جهات الاتصال المؤسسية في دليل الهاتف</string>
 </resources>

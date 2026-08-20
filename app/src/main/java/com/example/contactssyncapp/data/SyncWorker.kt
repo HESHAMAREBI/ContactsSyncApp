@@ -1,6 +1,9 @@
 package com.example.contactssyncapp.data
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 
@@ -8,6 +11,11 @@ class SyncWorker(appContext: Context, workerParams: WorkerParameters) :
     CoroutineWorker(appContext, workerParams) {
 
     override suspend fun doWork(): Result {
+        if (ContextCompat.checkSelfPermission(applicationContext, Manifest.permission.WRITE_CONTACTS) != PackageManager.PERMISSION_GRANTED ||
+            ContextCompat.checkSelfPermission(applicationContext, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
+            return Result.retry()
+        }
+
         val googleSheetsRepository = GoogleSheetsRepository(applicationContext)
         val contactsSyncRepository = ContactsSyncRepository(applicationContext)
 
