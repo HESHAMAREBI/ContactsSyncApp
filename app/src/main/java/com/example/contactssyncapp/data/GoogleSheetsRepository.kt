@@ -32,7 +32,18 @@ class GoogleSheetsRepository(private val context: Context) {
                 .build()
 
             var rawRows: List<List<Any?>>? = null
-            val candidateRanges = listOf(range, "'Sheet1'!A2:E", "'contacts'!A2:E", "Sheet1!A2:E", "contacts!A2:E", "A2:E")
+            val candidateRanges = listOf(
+                range,
+                "'Sheet1'!A2:F",
+                "'contacts'!A2:F",
+                "Sheet1!A2:F",
+                "contacts!A2:F",
+                "A2:F",
+                "'Sheet1'!A2:Z",
+                "A2:Z",
+                "'Sheet1'!A2:E",
+                "A2:E"
+            )
 
             for (candidateRange in candidateRanges.distinct()) {
                 try {
@@ -70,40 +81,39 @@ class GoogleSheetsRepository(private val context: Context) {
                 }
 
                 try {
-                    // Col 0 (A): Employee Name (e.g. "عبدالسلام علام")
-                    val name = row.getOrNull(0)?.toString()?.trim().orEmpty()
+                    // Index 0 (Col A): ID ("c-1", "c-2", ...)
+                    val id = row.getOrNull(0)?.toString()?.trim().orEmpty()
 
-                    // Col 1 (B): Department / Administration / Branch (e.g. "إدارة شؤون الموظفين")
-                    val department = row.getOrNull(1)?.toString()?.trim().orEmpty()
+                    // Index 1 (Col B): Name ("عبدالسلام علام", ...)
+                    val name = row.getOrNull(1)?.toString()?.trim().orEmpty()
 
-                    // Col 2 (C): Job Title (e.g. "مدير إدارة" / "موظف")
-                    val jobTitle = row.getOrNull(2)?.toString()?.trim().orEmpty()
+                    // Index 2 (Col C): Administration / Branch ("إدارة شؤون الموظفين", ...)
+                    val department = row.getOrNull(2)?.toString()?.trim().orEmpty()
 
-                    // Col 3 (D): Phone Number (e.g. "0912640019")
-                    val phone = row.getOrNull(3)?.toString()?.trim().orEmpty()
+                    // Index 3 (Col D): Job Title ("مدير إدارة شؤون الموظفين مكلف", ...)
+                    val jobTitle = row.getOrNull(3)?.toString()?.trim().orEmpty()
 
-                    // Col 4 (E): Notes / Branch / Extra
-                    val notes = row.getOrNull(4)?.toString()?.trim().orEmpty()
+                    // Index 4 (Col E): Business Phone ("091-2640019", ...)
+                    val phone = row.getOrNull(4)?.toString()?.trim().orEmpty()
 
-                    // Skip row only if both name and phone are completely blank
+                    // Index 5 (Col F): Notes ("ملاحظات", ...)
+                    val note = row.getOrNull(5)?.toString()?.trim().orEmpty()
+
+                    // Skip row only if both name and phone are blank
                     if (name.isBlank() && phone.isBlank()) {
                         Log.d(TAG, "Row $index skipped because both name and phone are blank.")
                         return@mapIndexedNotNull null
                     }
 
-                    val combinedNotes = when {
-                        jobTitle.isNotEmpty() && notes.isNotEmpty() && jobTitle != notes -> "$jobTitle - $notes"
-                        jobTitle.isNotEmpty() -> jobTitle
-                        else -> notes
-                    }
+                    val contactId = if (id.isNotBlank()) id else java.util.UUID.randomUUID().toString()
 
                     Contact(
-                        contactId = "c-${index + 1}",
+                        contactId = contactId,
                         name = name,
                         phone = phone,
-                        email = if (notes.contains("@")) notes else "",
+                        email = if (note.contains("@")) note else "",
                         address = department,
-                        notes = combinedNotes,
+                        notes = note,
                         department = department,
                         jobTitle = jobTitle
                     )

@@ -25,7 +25,7 @@ object AppConfigManager {
 
     // Default Fallbacks
     const val DEFAULT_SPREADSHEET_ID = "1OaoYcShJJbCEmECf-_HX3Kwc5REqec2W_mPGU4H6r-I"
-    const val DEFAULT_SHEET_RANGE = "'Sheet1'!A2:E"
+    const val DEFAULT_SHEET_RANGE = "'Sheet1'!A2:F"
     const val DEFAULT_SYNC_INTERVAL_HOURS = 24L
     const val DEFAULT_ACCOUNT_NAME = "مصرف الجمهورية"
     const val UNIQUE_WORK_NAME = "contacts_sync_work"

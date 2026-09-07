@@ -1,7 +1,6 @@
 package com.example.contactssyncapp.ui
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.contactssyncapp.data.Contact
 import com.example.contactssyncapp.data.ContactsSyncRepository
@@ -22,10 +21,10 @@ sealed class ContactsDirectoryUiState {
     data class Error(val message: String) : ContactsDirectoryUiState()
 }
 
-class ContactsDirectoryViewModel(application: Application) : AndroidViewModel(application) {
-
-    private val contactsRepo = ContactsSyncRepository(application)
-    private val sheetsRepo = GoogleSheetsRepository(application)
+class ContactsDirectoryViewModel(
+    private val contactsRepo: ContactsSyncRepository,
+    private val sheetsRepo: GoogleSheetsRepository
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow<ContactsDirectoryUiState>(ContactsDirectoryUiState.Loading)
     val uiState: StateFlow<ContactsDirectoryUiState> = _uiState.asStateFlow()
@@ -33,14 +32,23 @@ class ContactsDirectoryViewModel(application: Application) : AndroidViewModel(ap
     private var cachedContacts: List<Contact> = emptyList()
     private var currentQuery: String = ""
 
+    companion object {
+        private const val TAG = "ContactsDirectoryVM"
+    }
+
     fun loadContacts() {
         _uiState.value = ContactsDirectoryUiState.Loading
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val contacts = contactsRepo.getStoredEnterpriseContacts()
+                var contacts = contactsRepo.getStoredEnterpriseContacts()
+                if (contacts.isEmpty()) {
+                    android.util.Log.d(TAG, "Stored enterprise contacts is empty, falling back to Google Sheets...")
+                    contacts = sheetsRepo.getContacts()
+                }
                 cachedContacts = contacts
                 applyFilter(currentQuery)
             } catch (e: Exception) {
+                android.util.Log.e(TAG, "Error loading contacts", e)
                 _uiState.value = ContactsDirectoryUiState.Error(e.message ?: "حدث خطأ أثناء تحميل جهات الاتصال")
             }
         }
@@ -54,10 +62,14 @@ class ContactsDirectoryViewModel(application: Application) : AndroidViewModel(ap
                 if (freshSheetContacts.isNotEmpty()) {
                     contactsRepo.syncContactsWithDiff(freshSheetContacts)
                 }
-                val updatedContacts = contactsRepo.getStoredEnterpriseContacts()
+                var updatedContacts = contactsRepo.getStoredEnterpriseContacts()
+                if (updatedContacts.isEmpty()) {
+                    updatedContacts = freshSheetContacts
+                }
                 cachedContacts = updatedContacts
                 applyFilter(currentQuery)
             } catch (e: Exception) {
+                android.util.Log.e(TAG, "Error syncing fresh contacts", e)
                 _uiState.value = ContactsDirectoryUiState.Error(e.message ?: "حدث خطأ أثناء مزامنة وتحديث البيانات")
             }
         }

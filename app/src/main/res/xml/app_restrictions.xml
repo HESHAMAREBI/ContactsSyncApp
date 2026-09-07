@@ -13,7 +13,7 @@
         android:restrictionType="string"
         android:title="@string/restriction_sheet_range_title"
         android:description="@string/restriction_sheet_range_desc"
-        android:defaultValue="\'Sheet1\'!A2:E" />
+        android:defaultValue="\'Sheet1\'!A2:F" />
 
     <restriction
         android:key="sync_interval_hours"

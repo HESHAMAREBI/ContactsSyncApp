@@ -28,7 +28,7 @@ private data class ExistingPhoneContact(
     var notes: String = ""
 )
 
-class ContactsSyncRepository(private val context: Context) {
+class ContactsSyncRepository(val context: Context) {
 
     companion object {
         private const val TAG = "ContactsSync"
@@ -98,6 +98,10 @@ class ContactsSyncRepository(private val context: Context) {
      * Retrieves all stored enterprise contacts from the device phonebook
      * strictly isolated by ACCOUNT_TYPE = "com.jumhoria.contacts".
      */
+    /**
+     * Retrieves all stored enterprise contacts from the device phonebook
+     * strictly isolated by ACCOUNT_TYPE = "com.jumhoria.contacts" with fallback to Phone.CONTENT_URI.
+     */
     fun getStoredEnterpriseContacts(): List<Contact> {
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
             Log.e(TAG, "Cannot get stored enterprise contacts: Missing READ_CONTACTS permission.")
@@ -107,94 +111,144 @@ class ContactsSyncRepository(private val context: Context) {
         val resolver = context.contentResolver
         val contactMap = mutableMapOf<Long, ContactBuilder>()
 
-        val uri = ContactsContract.Data.CONTENT_URI
-        val projection = arrayOf(
-            ContactsContract.Data.RAW_CONTACT_ID,
-            ContactsContract.Data.MIMETYPE,
-            ContactsContract.Data.DATA1,
-            ContactsContract.Data.DATA2,
-            ContactsContract.Data.DATA3,
-            ContactsContract.Data.DATA4,
-            ContactsContract.Data.DATA5,
-            ContactsContract.RawContacts.ACCOUNT_TYPE
-        )
-        val selection = "${ContactsContract.RawContacts.ACCOUNT_TYPE} = ? AND ${ContactsContract.RawContacts.DELETED} = 0"
-        val selectionArgs = arrayOf(ACCOUNT_TYPE)
+        // 1. Query RawContacts table under ACCOUNT_TYPE to get corporate contact IDs
+        val rawIds = mutableSetOf<Long>()
+        val rawUri = ContactsContract.RawContacts.CONTENT_URI
+        val rawProj = arrayOf(ContactsContract.RawContacts._ID)
+        val rawSel = "${ContactsContract.RawContacts.ACCOUNT_TYPE} = ? AND ${ContactsContract.RawContacts.DELETED} = 0"
+        val rawArgs = arrayOf(ACCOUNT_TYPE)
 
         try {
-            resolver.query(uri, projection, selection, selectionArgs, null)?.use { cursor ->
-                val rawIdIdx = cursor.getColumnIndex(ContactsContract.Data.RAW_CONTACT_ID)
-                val mimeIdx = cursor.getColumnIndex(ContactsContract.Data.MIMETYPE)
-                val data1Idx = cursor.getColumnIndex(ContactsContract.Data.DATA1)
-                val data4Idx = cursor.getColumnIndex(ContactsContract.Data.DATA4)
-                val data5Idx = cursor.getColumnIndex(ContactsContract.Data.DATA5)
-
+            resolver.query(rawUri, rawProj, rawSel, rawArgs, null)?.use { cursor ->
+                val idIdx = cursor.getColumnIndex(ContactsContract.RawContacts._ID)
                 while (cursor.moveToNext()) {
-                    val rawId = cursor.getLong(rawIdIdx)
-                    val mime = cursor.getString(mimeIdx).orEmpty()
-                    val data1 = cursor.getString(data1Idx)?.trim().orEmpty()
-                    val data4 = cursor.getString(data4Idx)?.trim().orEmpty()
-                    val data5 = cursor.getString(data5Idx)?.trim().orEmpty()
-
-                    val builder = contactMap.getOrPut(rawId) {
-                        ContactBuilder(rawContactId = rawId, syncId = rawId.toString())
-                    }
-
-                    when (mime) {
-                        ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE -> {
-                            if (data1.isNotBlank()) builder.name = data1
-                        }
-                        ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE -> {
-                            val clean = PhoneUtils.extractCleanPhone(data1)
-                            if (clean.isNotBlank() && builder.phoneNumber.isBlank()) {
-                                builder.phoneNumber = clean
-                            } else if (builder.phoneNumber.isBlank()) {
-                                builder.phoneNumber = data1
-                            }
-                        }
-                        ContactsContract.CommonDataKinds.Organization.CONTENT_ITEM_TYPE -> {
-                            if (data1.isNotBlank() && data1 != "Jumhouria Contacts" && builder.department.isBlank()) {
-                                builder.department = data1
-                            }
-                            if (data5.isNotBlank() && builder.department.isBlank()) {
-                                builder.department = data5
-                            }
-                            if (data4.isNotBlank()) {
-                                builder.jobTitle = data4
-                            }
-                        }
-                        ContactsContract.CommonDataKinds.Note.CONTENT_ITEM_TYPE -> {
-                            if (data1.isNotBlank()) builder.note = data1
-                        }
-                    }
+                    rawIds.add(cursor.getLong(idIdx))
                 }
             }
+            Log.d(TAG, "Found ${rawIds.size} active raw contact IDs for account: $ACCOUNT_TYPE")
         } catch (e: Exception) {
-            Log.e(TAG, "Failed querying stored enterprise contacts", e)
+            Log.e(TAG, "Failed querying raw contacts table", e)
         }
 
-        return contactMap.values
-            .mapNotNull { builder ->
-                val name = builder.name.trim()
-                if (name.isBlank()) {
-                    null
-                } else {
-                    val effectiveDept = if (builder.department.isNotBlank()) builder.department else builder.jobTitle
-                    val effectiveTitle = if (builder.jobTitle.isNotBlank() && builder.jobTitle != builder.department) builder.jobTitle else ""
+        // 2. Query Data items for these raw contact IDs
+        if (rawIds.isNotEmpty()) {
+            for (chunk in rawIds.chunked(300)) {
+                val dataUri = ContactsContract.Data.CONTENT_URI
+                val dataProj = arrayOf(
+                    ContactsContract.Data.RAW_CONTACT_ID,
+                    ContactsContract.Data.MIMETYPE,
+                    ContactsContract.Data.DATA1,
+                    ContactsContract.Data.DATA4,
+                    ContactsContract.Data.DATA5
+                )
+                val dataSel = "${ContactsContract.Data.RAW_CONTACT_ID} IN (${chunk.joinToString(",")})"
 
-                    Contact(
-                        contactId = builder.syncId,
-                        name = name,
-                        phone = builder.phoneNumber.trim(),
-                        email = "",
-                        address = effectiveDept,
-                        notes = builder.note,
-                        department = effectiveDept,
-                        jobTitle = effectiveTitle
-                    )
+                try {
+                    resolver.query(dataUri, dataProj, dataSel, null, null)?.use { cursor ->
+                        val rawIdIdx = cursor.getColumnIndex(ContactsContract.Data.RAW_CONTACT_ID)
+                        val mimeIdx = cursor.getColumnIndex(ContactsContract.Data.MIMETYPE)
+                        val data1Idx = cursor.getColumnIndex(ContactsContract.Data.DATA1)
+                        val data4Idx = cursor.getColumnIndex(ContactsContract.Data.DATA4)
+                        val data5Idx = cursor.getColumnIndex(ContactsContract.Data.DATA5)
+
+                        while (cursor.moveToNext()) {
+                            val rawId = cursor.getLong(rawIdIdx)
+                            val mime = cursor.getString(mimeIdx).orEmpty()
+                            val data1 = cursor.getString(data1Idx)?.trim().orEmpty()
+                            val data4 = cursor.getString(data4Idx)?.trim().orEmpty()
+                            val data5 = cursor.getString(data5Idx)?.trim().orEmpty()
+
+                            val builder = contactMap.getOrPut(rawId) {
+                                ContactBuilder(rawContactId = rawId, syncId = rawId.toString())
+                            }
+
+                            when (mime) {
+                                ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE -> {
+                                    if (data1.isNotBlank()) {
+                                        builder.name = data1
+                                    }
+                                }
+                                ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE -> {
+                                    val clean = data1.replace(Regex("[^0-9+]"), "").trim()
+                                    if (clean.isNotBlank() && builder.phoneNumber.isBlank()) {
+                                        builder.phoneNumber = clean
+                                    }
+                                }
+                                ContactsContract.CommonDataKinds.Organization.CONTENT_ITEM_TYPE -> {
+                                    if (data1.isNotBlank() && data1 != "Jumhouria Contacts") {
+                                        builder.department = data1
+                                    } else if (data5.isNotBlank()) {
+                                        builder.department = data5
+                                    }
+                                    if (data4.isNotBlank()) {
+                                        builder.jobTitle = data4
+                                    }
+                                }
+                                ContactsContract.CommonDataKinds.Note.CONTENT_ITEM_TYPE -> {
+                                    if (data1.isNotBlank()) builder.note = data1
+                                }
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed querying data items for raw contact chunk", e)
                 }
             }
+        }
+
+        // 3. Instant Fallback: If contactMap is empty, query Phone.CONTENT_URI directly
+        if (contactMap.isEmpty()) {
+            Log.w(TAG, "Enterprise contacts query returned 0, attempting fallback query on Phone.CONTENT_URI...")
+            try {
+                val phoneUri = ContactsContract.CommonDataKinds.Phone.CONTENT_URI
+                val phoneProj = arrayOf(
+                    ContactsContract.CommonDataKinds.Phone.CONTACT_ID,
+                    ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+                    ContactsContract.CommonDataKinds.Phone.NUMBER
+                )
+                resolver.query(phoneUri, phoneProj, null, null, ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " ASC")?.use { cursor ->
+                    val idIdx = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.CONTACT_ID)
+                    val nameIdx = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
+                    val phoneIdx = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
+
+                    while (cursor.moveToNext()) {
+                        val cId = cursor.getString(idIdx).orEmpty()
+                        val name = cursor.getString(nameIdx)?.trim().orEmpty()
+                        val phone = cursor.getString(phoneIdx)?.trim().orEmpty()
+                        if (name.isNotBlank() || phone.isNotBlank()) {
+                            val fakeRawId = cId.toLongOrNull() ?: (contactMap.size + 1).toLong()
+                            val builder = contactMap.getOrPut(fakeRawId) {
+                                ContactBuilder(rawContactId = fakeRawId, syncId = cId, name = name, phoneNumber = phone)
+                            }
+                            if (builder.name.isBlank()) builder.name = name
+                            if (builder.phoneNumber.isBlank()) builder.phoneNumber = phone
+                        }
+                    }
+                }
+                Log.d(TAG, "Fallback Phone.CONTENT_URI query returned ${contactMap.size} contacts.")
+            } catch (e: Exception) {
+                Log.e(TAG, "Fallback Phone.CONTENT_URI query failed", e)
+            }
+        }
+
+        val resultList = contactMap.values
+            .filter { it.name.isNotBlank() || it.phoneNumber.isNotBlank() }
+            .map { builder ->
+                Contact(
+                    contactId = builder.syncId,
+                    name = builder.name.trim(),
+                    phone = builder.phoneNumber.trim(),
+                    email = "",
+                    address = builder.department.trim(),
+                    notes = builder.note.trim(),
+                    department = builder.department.trim(),
+                    jobTitle = builder.jobTitle.trim()
+                )
+            }
             .sortedBy { it.name.lowercase() }
+
+        Log.i(TAG, "getStoredEnterpriseContacts returning ${resultList.size} contacts.")
+        return resultList
     }
 
     /**
@@ -268,8 +322,16 @@ class ContactsSyncRepository(private val context: Context) {
             }
 
             // 1. Process Sheet contacts -> Determine INSERTS, UPDATES, or UNCHANGED
+            val matchedRawIds = mutableSetOf<Long>()
+
             for ((key, sheetContact) in sheetMap) {
-                val existing = existingContacts[key]
+                var existing = existingContacts[key]
+                if (existing == null && sheetContact.phone.isNotBlank()) {
+                    val phoneNorm = normalizePhone(sheetContact.phone)
+                    existing = existingContacts.values.firstOrNull {
+                        it.rawContactId !in matchedRawIds && normalizePhone(it.phone) == phoneNorm
+                    }
+                }
 
                 if (existing == null) {
                     // NEW CONTACT -> INSERT
@@ -277,12 +339,13 @@ class ContactsSyncRepository(private val context: Context) {
                     buildInsertOperations(operations, sheetContact)
                     inserted++
                 } else {
+                    matchedRawIds.add(existing.rawContactId)
+
                     // Precise attribute comparison
                     val nameChanged = normalizeText(existing.name) != normalizeText(sheetContact.name)
                     val phoneChanged = normalizePhone(existing.phone) != normalizePhone(sheetContact.phone)
-                    val deptChanged = normalizeText(existing.department) != normalizeText(sheetContact.address)
-                    val effectiveSheetNotes = if (sheetContact.notes.trim() == sheetContact.address.trim()) "" else sheetContact.notes.trim()
-                    val notesChanged = normalizeText(existing.notes) != normalizeText(effectiveSheetNotes)
+                    val deptChanged = normalizeText(existing.department) != normalizeText(sheetContact.department.ifBlank { sheetContact.address })
+                    val notesChanged = normalizeText(existing.notes) != normalizeText(sheetContact.notes)
 
                     if (nameChanged || phoneChanged || deptChanged || notesChanged) {
                         // MODIFIED CONTACT -> UPDATE
@@ -302,7 +365,7 @@ class ContactsSyncRepository(private val context: Context) {
 
             // 2. Process DELETED contacts (Present on phone under our account but missing from Sheet)
             for ((key, existing) in existingContacts) {
-                if (!sheetMap.containsKey(key)) {
+                if (existing.rawContactId !in matchedRawIds && !sheetMap.containsKey(key)) {
                     Log.i(TAG_DIFF, "[DELETE] Queued deleted contact: '${existing.name}', Phone: '${existing.phone}', rawContactId=${existing.rawContactId}")
                     buildDeleteOperation(operations, existing.rawContactId)
                     deleted++
@@ -438,50 +501,55 @@ class ContactsSyncRepository(private val context: Context) {
                 .build()
         )
 
-        // 2. StructuredName
-        if (contact.name.isNotBlank()) {
+        // 2. StructuredName (Employee full Arabic name in DISPLAY_NAME & GIVEN_NAME)
+        val cleanName = contact.name.trim()
+        if (cleanName.isNotBlank()) {
             operations.add(
                 ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
                     .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, rawIndex)
                     .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE)
-                    .withValue(ContactsContract.CommonDataKinds.StructuredName.DISPLAY_NAME, contact.name.trim())
+                    .withValue(ContactsContract.CommonDataKinds.StructuredName.DISPLAY_NAME, cleanName)
+                    .withValue(ContactsContract.CommonDataKinds.StructuredName.GIVEN_NAME, cleanName)
                     .build()
             )
         }
 
         // 3. Phone (TYPE_WORK)
-        if (contact.phone.isNotBlank()) {
+        val cleanInsertPhone = contact.phone.trim()
+        if (cleanInsertPhone.isNotBlank()) {
             operations.add(
                 ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
                     .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, rawIndex)
                     .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE)
-                    .withValue(ContactsContract.CommonDataKinds.Phone.NUMBER, contact.phone.trim())
+                    .withValue(ContactsContract.CommonDataKinds.Phone.NUMBER, cleanInsertPhone)
                     .withValue(ContactsContract.CommonDataKinds.Phone.TYPE, ContactsContract.CommonDataKinds.Phone.TYPE_WORK)
                     .build()
             )
         }
 
-        // 4. Organization / Department (Column C)
-        if (contact.address.isNotBlank()) {
+        // 4. Organization & Job Title (COMPANY = department, TITLE = jobTitle)
+        val insertDept = contact.department.ifBlank { contact.address }.trim()
+        val insertTitle = contact.jobTitle.trim()
+        if (insertDept.isNotBlank() || insertTitle.isNotBlank()) {
             operations.add(
                 ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
                     .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, rawIndex)
                     .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Organization.CONTENT_ITEM_TYPE)
-                    .withValue(ContactsContract.CommonDataKinds.Organization.COMPANY, "Jumhouria Contacts")
-                    .withValue(ContactsContract.CommonDataKinds.Organization.DEPARTMENT, contact.address.trim())
-                    .withValue(ContactsContract.CommonDataKinds.Organization.TITLE, contact.address.trim())
+                    .withValue(ContactsContract.CommonDataKinds.Organization.COMPANY, insertDept)
+                    .withValue(ContactsContract.CommonDataKinds.Organization.TITLE, insertTitle)
                     .withValue(ContactsContract.CommonDataKinds.Organization.TYPE, ContactsContract.CommonDataKinds.Organization.TYPE_WORK)
                     .build()
             )
         }
 
-        // 5. Notes / Extra (Column E)
-        if (contact.notes.isNotBlank() && contact.notes.trim() != contact.address.trim()) {
+        // 5. Notes
+        val noteContent = contact.notes.trim()
+        if (noteContent.isNotBlank()) {
             operations.add(
                 ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
                     .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, rawIndex)
                     .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Note.CONTENT_ITEM_TYPE)
-                    .withValue(ContactsContract.CommonDataKinds.Note.NOTE, contact.notes.trim())
+                    .withValue(ContactsContract.CommonDataKinds.Note.NOTE, noteContent)
                     .build()
             )
         }
@@ -502,49 +570,54 @@ class ContactsSyncRepository(private val context: Context) {
         )
 
         // Re-insert updated StructuredName
-        if (contact.name.isNotBlank()) {
+        val cleanName = contact.name.trim()
+        if (cleanName.isNotBlank()) {
             operations.add(
                 ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
                     .withValue(ContactsContract.Data.RAW_CONTACT_ID, rawContactId)
                     .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE)
-                    .withValue(ContactsContract.CommonDataKinds.StructuredName.DISPLAY_NAME, contact.name.trim())
+                    .withValue(ContactsContract.CommonDataKinds.StructuredName.DISPLAY_NAME, cleanName)
+                    .withValue(ContactsContract.CommonDataKinds.StructuredName.GIVEN_NAME, cleanName)
                     .build()
             )
         }
 
         // Re-insert updated Phone
-        if (contact.phone.isNotBlank()) {
+        val cleanUpdatePhone = contact.phone.trim()
+        if (cleanUpdatePhone.isNotBlank()) {
             operations.add(
                 ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
                     .withValue(ContactsContract.Data.RAW_CONTACT_ID, rawContactId)
                     .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE)
-                    .withValue(ContactsContract.CommonDataKinds.Phone.NUMBER, contact.phone.trim())
+                    .withValue(ContactsContract.CommonDataKinds.Phone.NUMBER, cleanUpdatePhone)
                     .withValue(ContactsContract.CommonDataKinds.Phone.TYPE, ContactsContract.CommonDataKinds.Phone.TYPE_WORK)
                     .build()
             )
         }
 
-        // Re-insert updated Organization (Department / Branch)
-        if (contact.address.isNotBlank()) {
+        // Re-insert updated Organization (COMPANY = department, TITLE = jobTitle)
+        val updateDept = contact.department.ifBlank { contact.address }.trim()
+        val updateTitle = contact.jobTitle.trim()
+        if (updateDept.isNotBlank() || updateTitle.isNotBlank()) {
             operations.add(
                 ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
                     .withValue(ContactsContract.Data.RAW_CONTACT_ID, rawContactId)
                     .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Organization.CONTENT_ITEM_TYPE)
-                    .withValue(ContactsContract.CommonDataKinds.Organization.COMPANY, "Jumhouria Contacts")
-                    .withValue(ContactsContract.CommonDataKinds.Organization.DEPARTMENT, contact.address.trim())
-                    .withValue(ContactsContract.CommonDataKinds.Organization.TITLE, contact.address.trim())
+                    .withValue(ContactsContract.CommonDataKinds.Organization.COMPANY, updateDept)
+                    .withValue(ContactsContract.CommonDataKinds.Organization.TITLE, updateTitle)
                     .withValue(ContactsContract.CommonDataKinds.Organization.TYPE, ContactsContract.CommonDataKinds.Organization.TYPE_WORK)
                     .build()
             )
         }
 
         // Re-insert updated Notes
-        if (contact.notes.isNotBlank() && contact.notes.trim() != contact.address.trim()) {
+        val noteContent = contact.notes.trim()
+        if (noteContent.isNotBlank()) {
             operations.add(
                 ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
                     .withValue(ContactsContract.Data.RAW_CONTACT_ID, rawContactId)
                     .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Note.CONTENT_ITEM_TYPE)
-                    .withValue(ContactsContract.CommonDataKinds.Note.NOTE, contact.notes.trim())
+                    .withValue(ContactsContract.CommonDataKinds.Note.NOTE, noteContent)
                     .build()
             )
         }

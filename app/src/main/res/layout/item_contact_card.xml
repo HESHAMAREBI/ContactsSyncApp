@@ -39,7 +39,7 @@
                 android:textStyle="bold"
                 tools:text="ع" />
 
-            <!-- Name and Organization Column -->
+            <!-- Name Column -->
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
@@ -55,60 +55,91 @@
                     android:ellipsize="end"
                     android:maxLines="2"
                     android:textColor="@color/primaryText"
-                    android:textSize="17sp"
+                    android:textSize="18sp"
                     android:textStyle="bold"
                     tools:text="عبدالسلام علام" />
-
-                <!-- Job Title / Subtitle -->
-                <TextView
-                    android:id="@+id/tvJobTitle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="3dp"
-                    android:ellipsize="end"
-                    android:maxLines="1"
-                    android:textColor="@color/secondaryText"
-                    android:textSize="13sp"
-                    android:visibility="gone"
-                    tools:text="مدير إدارة شؤون الموظفين مكلف"
-                    tools:visibility="visible" />
 
             </LinearLayout>
 
         </LinearLayout>
 
-        <!-- Department / Administration Tag -->
+        <!-- Badges Container: Separate Chips for Department and Job Title -->
         <LinearLayout
-            android:id="@+id/departmentContainer"
-            android:layout_width="wrap_content"
+            android:id="@+id/badgesContainer"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:background="@drawable/bg_badge"
             android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:paddingStart="10dp"
-            android:paddingTop="5dp"
-            android:paddingEnd="10dp"
-            android:paddingBottom="5dp">
+            android:orientation="horizontal">
 
-            <ImageView
-                android:layout_width="14dp"
-                android:layout_height="14dp"
-                android:contentDescription="الإدارة / الفرع"
-                android:src="@drawable/ic_business"
-                app:tint="@color/badgeText" />
-
-            <TextView
-                android:id="@+id/tvDepartment"
+            <!-- Department / Administration Tag -->
+            <LinearLayout
+                android:id="@+id/departmentContainer"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="6dp"
-                android:ellipsize="end"
-                android:maxLines="1"
-                android:textColor="@color/badgeText"
-                android:textSize="12sp"
-                android:textStyle="bold"
-                tools:text="إدارة شؤون الموظفين" />
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/bg_badge"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="10dp"
+                android:paddingTop="5dp"
+                android:paddingEnd="10dp"
+                android:paddingBottom="5dp">
+
+                <ImageView
+                    android:layout_width="14dp"
+                    android:layout_height="14dp"
+                    android:contentDescription="الإدارة / الفرع"
+                    android:src="@drawable/ic_business"
+                    app:tint="@color/badgeText" />
+
+                <TextView
+                    android:id="@+id/tvDepartment"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="6dp"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textColor="@color/badgeText"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    tools:text="إدارة شؤون الموظفين" />
+
+            </LinearLayout>
+
+            <!-- Job Title Tag -->
+            <LinearLayout
+                android:id="@+id/jobTitleBadgeContainer"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_badge"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="10dp"
+                android:paddingTop="5dp"
+                android:paddingEnd="10dp"
+                android:paddingBottom="5dp">
+
+                <ImageView
+                    android:layout_width="14dp"
+                    android:layout_height="14dp"
+                    android:contentDescription="المسمى الوظيفي"
+                    android:src="@drawable/ic_directory"
+                    app:tint="@color/badgeText" />
+
+                <TextView
+                    android:id="@+id/tvJobTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="6dp"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textColor="@color/badgeText"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    tools:text="مدير إدارة مكلف" />
+
+            </LinearLayout>
 
         </LinearLayout>
 

@@ -32,6 +32,11 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name="com.example.contactssyncapp.ui.ContactsDirectoryActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
         <!-- Dynamic MDM Configuration Change Receiver -->
         <receiver
             android:name="com.example.contactssyncapp.data.AppConfigManager$RestrictionsReceiver"

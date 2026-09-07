@@ -1,101 +1,117 @@
 package com.example.contactssyncapp.ui
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.TextView
+import android.widget.Toast
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
-import com.example.contactssyncapp.R
 import com.example.contactssyncapp.data.Contact
-import com.example.contactssyncapp.data.PhoneUtils
-import com.google.android.material.button.MaterialButton
+import com.example.contactssyncapp.databinding.ItemContactCardBinding
 
 class ContactsAdapter(
-    private val onCallClick: (String) -> Unit,
-    private val onCopyClick: (String) -> Unit
+    private val onCallClick: ((String) -> Unit)? = null,
+    private val onCopyClick: ((String) -> Unit)? = null
 ) : ListAdapter<Contact, ContactsAdapter.ContactViewHolder>(ContactDiffCallback()) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ContactViewHolder {
-        val view = LayoutInflater.from(parent.context).inflate(R.layout.item_contact_card, parent, false)
-        return ContactViewHolder(view)
+        val binding = ItemContactCardBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+        return ContactViewHolder(binding)
     }
 
     override fun onBindViewHolder(holder: ContactViewHolder, position: Int) {
         holder.bind(getItem(position), onCallClick, onCopyClick)
     }
 
-    class ContactViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-        private val tvAvatarInitial: TextView = itemView.findViewById(R.id.tvAvatarInitial)
-        private val tvContactName: TextView = itemView.findViewById(R.id.tvContactName)
-        private val tvJobTitle: TextView = itemView.findViewById(R.id.tvJobTitle)
-        private val tvPhoneNumber: TextView = itemView.findViewById(R.id.tvPhoneNumber)
-        private val tvDepartment: TextView = itemView.findViewById(R.id.tvDepartment)
-        private val departmentContainer: View = itemView.findViewById(R.id.departmentContainer)
-        private val btnCall: MaterialButton = itemView.findViewById(R.id.btnCall)
-        private val btnCopy: MaterialButton = itemView.findViewById(R.id.btnCopy)
+    class ContactViewHolder(private val binding: ItemContactCardBinding) : RecyclerView.ViewHolder(binding.root) {
 
         fun bind(
             contact: Contact,
-            onCallClick: (String) -> Unit,
-            onCopyClick: (String) -> Unit
+            onCallClick: ((String) -> Unit)?,
+            onCopyClick: ((String) -> Unit)?
         ) {
-            // Name & Avatar Initial
-            val displayName = contact.name.trim().ifBlank { "جهة اتصال بدون اسم" }
-            tvContactName.text = displayName
-            tvAvatarInitial.text = extractArabicInitial(displayName)
+            val context = itemView.context
 
-            // Job Title
-            val title = contact.jobTitle.trim().ifEmpty { contact.notes.trim() }
-            if (title.isNotEmpty() && title != contact.department.trim() && title != contact.address.trim()) {
-                tvJobTitle.text = title
-                tvJobTitle.visibility = View.VISIBLE
-            } else {
-                tvJobTitle.visibility = View.GONE
-            }
+            // 1. Full Arabic Name & Initial
+            val displayName = contact.name.trim().ifBlank { "جهة اتصال غير محددة" }
+            binding.tvContactName.text = displayName
+            binding.tvAvatarInitial.text = extractArabicInitial(displayName)
 
-            // Department / Branch
+            // 2. Department & Job Title Tags
             val department = contact.department.trim().ifEmpty { contact.address.trim() }
             if (department.isNotEmpty()) {
-                tvDepartment.text = department
-                departmentContainer.visibility = View.VISIBLE
+                binding.tvDepartment.text = department
+                binding.departmentContainer.visibility = View.VISIBLE
             } else {
-                departmentContainer.visibility = View.GONE
+                binding.departmentContainer.visibility = View.GONE
             }
 
-            // Phone resolution
-            val cleanPhone = PhoneUtils.extractCleanPhone(contact.phone)
-            val displayPhone = PhoneUtils.formatPhoneForDisplay(contact.phone)
-
-            if (cleanPhone.isNotEmpty()) {
-                tvPhoneNumber.text = displayPhone
-                btnCall.isEnabled = true
-                btnCopy.isEnabled = true
+            val jobTitle = contact.jobTitle.trim()
+            if (jobTitle.isNotEmpty() && jobTitle != department) {
+                binding.tvJobTitle.text = jobTitle
+                binding.jobTitleBadgeContainer.visibility = View.VISIBLE
             } else {
-                tvPhoneNumber.text = "لا يوجد رقم"
-                btnCall.isEnabled = false
-                btnCopy.isEnabled = false
+                binding.jobTitleBadgeContainer.visibility = View.GONE
             }
 
-            // Action Handlers
-            btnCall.setOnClickListener {
-                if (cleanPhone.isNotEmpty()) {
-                    onCallClick(cleanPhone)
-                }
+            binding.badgesContainer.visibility = if (department.isNotEmpty() || (jobTitle.isNotEmpty() && jobTitle != department)) {
+                View.VISIBLE
+            } else {
+                View.GONE
             }
 
-            btnCopy.setOnClickListener {
-                if (cleanPhone.isNotEmpty()) {
-                    onCopyClick(cleanPhone)
+            // 3. Phone Number & Direct Actions
+            val phone = contact.phone.trim()
+            if (phone.isNotEmpty()) {
+                binding.tvPhoneNumber.text = phone
+                binding.btnCall.isEnabled = true
+                binding.btnCall.alpha = 1.0f
+                binding.btnCopy.isEnabled = true
+                binding.btnCopy.alpha = 1.0f
+
+                binding.btnCall.setOnClickListener {
+                    try {
+                        val dialNumber = phone.replace(" ", "")
+                        val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:$dialNumber"))
+                        context.startActivity(intent)
+                    } catch (e: Exception) {
+                        Toast.makeText(context, "تعذر فتح تطبيق الهاتف لإجراء المكالمة", Toast.LENGTH_SHORT).show()
+                    }
+                    onCallClick?.invoke(phone)
                 }
+
+                binding.btnCopy.setOnClickListener {
+                    try {
+                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                        val clip = ClipData.newPlainText("Contact Phone", phone)
+                        clipboard.setPrimaryClip(clip)
+                        Toast.makeText(context, "تم نسخ الرقم: $phone", Toast.LENGTH_SHORT).show()
+                    } catch (e: Exception) {
+                        Toast.makeText(context, "تعذر نسخ الرقم", Toast.LENGTH_SHORT).show()
+                    }
+                    onCopyClick?.invoke(phone)
+                }
+            } else {
+                binding.tvPhoneNumber.text = "لا يوجد رقم مسجل"
+                binding.btnCall.isEnabled = false
+                binding.btnCall.alpha = 0.5f
+                binding.btnCopy.isEnabled = false
+                binding.btnCopy.alpha = 0.5f
+                binding.btnCall.setOnClickListener(null)
+                binding.btnCopy.setOnClickListener(null)
             }
         }
 
         private fun extractArabicInitial(name: String): String {
             val cleaned = name.trim()
-            if (cleaned.isEmpty() || cleaned.startsWith("c-", ignoreCase = true)) return "م"
-            return cleaned.first().toString()
+            val firstChar = cleaned.firstOrNull { it.isLetter() }
+            return firstChar?.uppercase() ?: "م"
         }
     }
 
